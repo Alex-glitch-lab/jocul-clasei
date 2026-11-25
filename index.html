@@ -6,10 +6,12 @@
 <title>Jocul Clasei</title>
 <style>
   :root { --bg1:#7dd3fc; --bg2:#fef3c7; --ink:#1e293b; --btn:#f97316; }
-  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;background:var(--bg1);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);touch-action:none;user-select:none;-webkit-user-select:none}
-  canvas{display:block;width:100vw;height:100vh}
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;position:fixed;top:0;left:0;right:0;bottom:0;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;background:var(--bg1);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
+  #err{position:fixed;left:8px;right:8px;bottom:8px;z-index:9;background:#b91c1c;color:#fff;font:14px/1.3 monospace;padding:10px;border-radius:8px;white-space:pre-wrap}
+  #ver{position:fixed;right:8px;bottom:6px;font-size:12px;opacity:.5;z-index:3}
   #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:12px 16px;font-size:22px;font-weight:800;pointer-events:none}
-  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px;background:rgba(255,255,255,.88)}
+  .screen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px;background:rgba(255,255,255,.88)}
   .screen h1{font-size:34px;margin:0}
   .screen p{font-size:20px;margin:0;max-width:420px;line-height:1.35}
   .big{font-size:64px}
@@ -19,6 +21,8 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="err" class="hidden"></div>
+<div id="ver">v2</div>
 <div id="hud"><span id="score">⭐ 0</span><span id="lives">❤️❤️❤️</span></div>
 
 <div id="start" class="screen">
@@ -37,6 +41,8 @@
 </div>
 
 <script>
+// Orice eroare apare pe ecran (roșu), ca s-o putem vedea pe telefon.
+window.onerror = function (msg, src, line) { var b = document.getElementById('err'); b.textContent = 'Eroare: ' + msg + ' (linia ' + line + ')'; b.classList.remove('hidden'); };
 // ======== SETĂRILE JOCULUI — aici schimbăm ce aleg copiii ========
 const JOC = {
   titlu:      "Jocul Clasei a III-a",
@@ -52,7 +58,7 @@ const JOC = {
 // ================================================================
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-let W, H, DPR, hero, items, score, lives, t0, last, running = false, spawnAcc = 0;
+let W, H, DPR, hero = { x: 0, y: 0 }, items = [], score = 0, lives = 0, t0, last, running = false, spawnAcc = 0;
 const $ = id => document.getElementById(id);
 
 function setup() {
@@ -72,6 +78,7 @@ function resize() {
 function size() { return Math.max(36, Math.min(W, H) * 0.11); }
 
 function start() {
+  if (running) return;
   hero = { x: W / 2, y: H - size() * 1.2 };
   items = []; score = 0; lives = JOC.vieti; spawnAcc = 0;
   t0 = last = performance.now(); running = true;
@@ -99,7 +106,7 @@ function spawn(elapsed) {
 
 function loop(now) {
   if (!running) return;
-  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  const dt = Math.max(0, Math.min((now - last) / 1000, 0.05)); last = now;
   const elapsed = (now - t0) / 1000;
   spawnAcc += dt;
   const every = Math.max(0.35, 0.9 - elapsed * 0.012) / JOC.viteza;
@@ -149,9 +156,14 @@ addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') hero.x = Math.min(W - size() / 2, hero.x + W * 0.08);
 });
 addEventListener('resize', () => { resize(); if (hero) hero.y = H - size() * 1.2; });
-$('go').onclick = start; $('again').onclick = start;
+// Pe iPhone pornim la atingere (touchend), nu așteptăm click-ul.
+function tapButton(el) {
+  el.addEventListener('touchend', function (e) { e.preventDefault(); e.stopPropagation(); start(); }, { passive: false });
+  el.addEventListener('click', start);
+}
+tapButton($('go')); tapButton($('again'));
 
-resize(); setup(); draw();
+resize(); setup(); hero.x = W / 2; hero.y = H - size() * 1.2; draw();
 </script>
 </body>
 </html>
